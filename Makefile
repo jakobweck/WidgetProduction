@@ -1,4 +1,4 @@
-CC		:= g++
+CC		:= mpiCC
 C_FLAGS := -std=c++17 -g -Wall -Wextra
 
 BIN		:= bin
