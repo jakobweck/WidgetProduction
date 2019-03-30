@@ -2,12 +2,15 @@
 #include "mpi.h"
 #include <iostream>
 #include <iomanip>
+#include <thread>
 #include <fstream>
 #include <string>
 #include <array>
+#include <chrono>
 #include <vector>
 #include <math.h>
-
+using namespace std::this_thread;
+using namespace std::chrono;
 using namespace std;
 struct Data
 {
@@ -58,7 +61,6 @@ string floatToString(float num,int precision){
 void printResult(float* total, float* forYear, float* forType, int numModels, int yearToReport, char typeToReport)
 {
 	ostringstream os;
-	MPI_Barrier(MPI_COMM_WORLD);
 	os << "Model Num ---- Total Sales ---- Sales for " << yearToReport << " ---- Sales for type " << typeToReport << endl;
 	for(int i =0;i<numModels;i++)
 	{
@@ -149,6 +151,7 @@ void processRows(int rank, MPI_Comm comm, Data* rows, int sliceSize, int numMode
 		MPI_Reduce(modelNumTotalSales, modelNumTotalSalesR, numModels, MPI_FLOAT, MPI_SUM, 0, comm);
 		MPI_Reduce(modelNumSalesSpecYear, modelNumSalesSpecYearR, numModels, MPI_FLOAT, MPI_SUM, 0, comm);
 		MPI_Reduce(modelNumSalesSpecType, modelNumSalesSpecTypeR, numModels, MPI_FLOAT, MPI_SUM, 0, comm);
+		sleep_for(seconds(1)); //let the error handler rank process everything before printing to avoid cout race
 		printResult(modelNumTotalSalesR, modelNumSalesSpecYearR, modelNumSalesSpecTypeR, numModels, yearToReport, typeToReport);
 
 	}
@@ -333,7 +336,6 @@ void errorHandlerRank(int rank)
 				break;
 			case 6:
 				done = true;
-				numErrors--;
 				break;
 			}
 		if(recvStatus.MPI_TAG != 6) cout << "Rank " << src << " reported error: \"" << errorString << "\": " << dataString(errorData) << endl;
@@ -353,10 +355,7 @@ int main(int argc, char *argv[])
 	}
 	else if (rank==1) errorHandlerRank(1);
 	else ranki(rank, stoi(argv[2]), argv[3][0]);
-	if(rank!=0)
-	{
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
+
 	MPI_Finalize();
 	return 0;
 }
